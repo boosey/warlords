@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flame/camera.dart';
 import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
@@ -14,7 +12,7 @@ class WarlordsGame extends FlameGame {
   WarlordsGame();
 
   @override
-  bool get debugMode => true;
+  bool get debugMode => false;
 
   @override
   Future<void> onLoad() async {
@@ -47,15 +45,6 @@ class WarlordsGame extends FlameGame {
           color: Colors.blue,
           anchor: Anchor.topLeft,
           angle: 0,
-          position: Vector2(wallThickness, wallThickness),
-          size: Vector2(worldSize.x / worldDivider, worldSize.y / worldDivider),
-        )..flipVerticallyAroundCenter(),
-      )
-      ..add(
-        Castle(
-          color: Colors.blue,
-          anchor: Anchor.topLeft,
-          angle: 0,
           position: Vector2(wallThickness,
               worldSize.y - (worldSize.y / worldDivider) - wallThickness),
           size: Vector2(worldSize.x / worldDivider, worldSize.y / worldDivider),
@@ -63,7 +52,16 @@ class WarlordsGame extends FlameGame {
       )
       ..add(
         Castle(
-          color: Colors.blue,
+          color: Colors.red,
+          anchor: Anchor.topLeft,
+          angle: 0,
+          position: Vector2(wallThickness, wallThickness),
+          size: Vector2(worldSize.x / worldDivider, worldSize.y / worldDivider),
+        )..flipVerticallyAroundCenter(),
+      )
+      ..add(
+        Castle(
+          color: Colors.green,
           anchor: Anchor.topLeft,
           angle: 0,
           position: Vector2(
@@ -75,7 +73,7 @@ class WarlordsGame extends FlameGame {
       )
       ..add(
         Castle(
-          color: Colors.blue,
+          color: Colors.purple,
           anchor: Anchor.topLeft,
           angle: 0,
           position: Vector2(

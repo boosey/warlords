@@ -1,9 +1,11 @@
 import 'dart:math';
+import 'dart:ui';
 import 'package:flame/components.dart';
-import 'package:flutter/material.dart';
+import 'package:flame/extensions.dart';
+
 import 'package:warlords/constants.dart';
 
-enum BrickRunDirection { vertical, horizontal }
+enum BrickRunDirection { vertical, horizontal, corner }
 
 class Castle extends PositionComponent {
   final Color color;
@@ -53,39 +55,73 @@ class CastleLayer extends PositionComponent {
   @override
   Future<void> onLoad() async {
     await add(
-      BrickRun(
+      simpleRun(
         direction: BrickRunDirection.horizontal,
-        brickCount: bricksPerRun,
+        runLength: straightRunLength(),
+        thickness: brickThickness,
         color: color,
-        position: Vector2(0, 0),
-        size: Vector2(
-          size.x,
-          brickThickness,
-        ),
+        count: bricksPerRun,
       ),
     );
 
     await add(
-      BrickRun(
+      simpleRun(
         direction: BrickRunDirection.vertical,
-        brickCount: bricksPerRun,
-        color: Colors.red,
-        position: Vector2(size.x - brickThickness, brickThickness),
-        size: Vector2(
-          brickThickness,
-          size.y - brickThickness,
-        ),
+        runLength: straightRunLength(),
+        thickness: brickThickness,
+        color: color,
+        count: bricksPerRun,
       ),
     );
 
+    final cornerLength = Vector2(straightRunLength(), 0).distanceTo(
+      Vector2(size.x, size.y - straightRunLength()),
+    );
+
+    await add(simpleRun(
+      direction: BrickRunDirection.corner,
+      count: 1,
+      color: color,
+      runLength: cornerLength,
+      thickness:
+          brickThickness + 19, // Complete hack Found through trial and error
+    ));
+
     return Future.value();
   }
+
+  double straightRunLength() => size.x * straightRunLengthPercentage;
+
+  BrickRun simpleRun({
+    required BrickRunDirection direction,
+    required double runLength,
+    required double thickness,
+    required Color color,
+    required int count,
+  }) {
+    return BrickRun(
+      direction: direction,
+      brickCount: count,
+      thickness: thickness,
+      color: color,
+      size: Vector2(runLength, thickness),
+      position: calculatePosition(direction, runLength),
+    );
+  }
+
+  Vector2 calculatePosition(BrickRunDirection direction, double length) =>
+      switch (direction) {
+        BrickRunDirection.horizontal => Vector2.zero(),
+        BrickRunDirection.vertical => Vector2(size.x, size.y - length),
+        BrickRunDirection.corner => Vector2(straightRunLength(), 0),
+      };
 }
 
 class BrickRun extends PositionComponent {
   final BrickRunDirection direction;
   final int brickCount;
   final Color color;
+  final double thickness;
 
   BrickRun({
     required this.direction,
@@ -93,7 +129,11 @@ class BrickRun extends PositionComponent {
     required this.color,
     required super.size,
     required super.position,
+    required this.thickness,
   });
+
+  @override
+  bool get debugMode => false;
 
   @override
   Future<void> onLoad() async {
@@ -103,44 +143,31 @@ class BrickRun extends PositionComponent {
       await add(
         Brick(
           color: color,
-          position: brickPosition(direction, brickLength, bidx),
-          size: brickSize(direction, brickLength, bidx),
+          position: brickPosition(brickLength, bidx),
+          size: Vector2(brickLength, thickness),
         ),
       );
+
+      angle = runAngle();
     }
 
     return Future.value();
   }
 
-  Vector2 brickPosition(
-    BrickRunDirection direction,
-    double brickLength,
-    int bidx,
-  ) =>
-      direction == BrickRunDirection.horizontal
-          ? Vector2(
-              brickLength * bidx,
-              0,
-            )
-          : Vector2(
-              0,
-              brickLength * bidx,
-            );
+  double runAngle() => switch (direction) {
+        BrickRunDirection.horizontal => 0,
+        BrickRunDirection.vertical => pi / 2,
+        BrickRunDirection.corner => pi / 4,
+      };
 
-  Vector2 brickSize(
-    BrickRunDirection direction,
-    double brickLength,
-    int bidx,
-  ) =>
-      direction == BrickRunDirection.horizontal
-          ? Vector2(
-              brickLength,
-              brickThickness,
-            )
-          : Vector2(
-              brickThickness,
-              brickLength,
-            );
+  Vector2 brickPosition(double brickLength, int bidx) =>
+      Vector2(brickLength * bidx, 0);
+
+  double runLength() => size.x * straightRunLengthPercentage;
+
+  // Vector2 brickSize(double brickLength) => Vector2(brickLength, brickThickness);
+  // Vector2 cornerBrickSize(double brickLength) =>
+  //     Vector2(brickLength, brickThickness + 1);
 }
 
 class Brick extends RectangleComponent {
@@ -152,7 +179,12 @@ class Brick extends RectangleComponent {
     required super.position,
   }) {
     paint = Paint()
-      ..style = PaintingStyle.fill
+      ..shader = Gradient.linear(
+        const Offset(0, 0),
+        Offset(size.x, size.y),
+        [color, color.brighten(0.5)],
+      )
+      // ..style = PaintingStyle.fill
       ..color = color;
   }
 }

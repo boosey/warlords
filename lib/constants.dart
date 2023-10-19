@@ -19,3 +19,4 @@ const Map<int, int> layerConfig = {
 final numberOfLayers = layerConfig.length;
 
 const worldDivider = 3.5;
+const straightRunLengthPercentage = 0.70009;
