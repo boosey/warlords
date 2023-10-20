@@ -13,7 +13,6 @@ class Castle extends PositionComponent {
   Castle({
     required this.color,
     required super.anchor,
-    required super.angle,
     required super.position,
     required super.size,
   });
@@ -24,7 +23,7 @@ class Castle extends PositionComponent {
       await add(
         CastleLayer(
           layerLevel: lidx,
-          color: color,
+          color: color.brighten(lidx / numberOfLayers / 1.5),
           bricksPerRun: layerConfig[lidx]!,
           position: Vector2(0, lidx * brickThickness),
           size: Vector2(
@@ -78,14 +77,22 @@ class CastleLayer extends PositionComponent {
       Vector2(size.x, size.y - straightRunLength()),
     );
 
-    await add(simpleRun(
-      direction: BrickRunDirection.corner,
-      count: 1,
-      color: color,
-      runLength: cornerLength,
-      thickness:
-          brickThickness + 19, // Complete hack Found through trial and error
-    ));
+    add(
+      CornerBrick(
+        color: color,
+        position: Vector2(straightRunLength(), 0),
+        size: Vector2(cornerLength, brickThickness),
+      ),
+    );
+
+    // await add(simpleRun(
+    //   direction: BrickRunDirection.corner,
+    //   count: 1,
+    //   color: color,
+    //   runLength: cornerLength,
+    //   thickness:
+    //       brickThickness + 19, // Complete hack Found through trial and error
+    // ));
 
     return Future.value();
   }
@@ -141,11 +148,18 @@ class BrickRun extends PositionComponent {
 
     for (var bidx = 0; bidx < brickCount; bidx++) {
       await add(
-        Brick(
-          color: color,
-          position: brickPosition(brickLength, bidx),
-          size: Vector2(brickLength, thickness),
-        ),
+        isEndBrick(brickCount, bidx)
+            ? EndBrick(
+                color: color,
+                position: brickPosition(brickLength, bidx),
+                size: Vector2(brickLength, thickness),
+                direction: direction,
+              )
+            : Brick(
+                color: color,
+                position: brickPosition(brickLength, bidx),
+                size: Vector2(brickLength, thickness),
+              ),
       );
 
       angle = runAngle();
@@ -153,6 +167,11 @@ class BrickRun extends PositionComponent {
 
     return Future.value();
   }
+
+  bool isEndBrick(int brickCount, int bidx) =>
+      ((bidx == (brickCount - 1)) &&
+          (direction == BrickRunDirection.horizontal)) ||
+      ((bidx == 0) && (direction == BrickRunDirection.vertical));
 
   double runAngle() => switch (direction) {
         BrickRunDirection.horizontal => 0,
@@ -164,10 +183,6 @@ class BrickRun extends PositionComponent {
       Vector2(brickLength * bidx, 0);
 
   double runLength() => size.x * straightRunLengthPercentage;
-
-  // Vector2 brickSize(double brickLength) => Vector2(brickLength, brickThickness);
-  // Vector2 cornerBrickSize(double brickLength) =>
-  //     Vector2(brickLength, brickThickness + 1);
 }
 
 class Brick extends RectangleComponent {
@@ -183,8 +198,71 @@ class Brick extends RectangleComponent {
         const Offset(0, 0),
         Offset(size.x, size.y),
         [color, color.brighten(0.5)],
-      )
-      // ..style = PaintingStyle.fill
-      ..color = color;
+      );
+  }
+}
+
+class CornerBrick extends PositionComponent {
+  bool intact = true;
+
+  CornerBrick({
+    required Color color,
+    required super.size,
+    required super.position,
+  }) {
+    final p = Paint()
+      ..shader = Gradient.linear(
+        Offset(size.x / 2, 0),
+        Offset(size.x / 2, size.y),
+        [color, color.brighten(0.5)],
+      );
+    final thickness = min(size.x, size.y);
+    final hyp = sqrt(pow(thickness, 2) * 2);
+
+    add(
+      PolygonComponent([
+        Vector2.zero(),
+        Vector2(size.x, 0),
+        Vector2(size.x, hyp),
+        Vector2(0, hyp)
+      ])
+        ..angle = pi / 4
+        ..paint = p,
+    );
+  }
+}
+
+class EndBrick extends PositionComponent {
+  bool intact = true;
+
+  EndBrick({
+    required Color color,
+    required super.size,
+    required super.position,
+    required BrickRunDirection direction,
+  }) {
+    final p = Paint()
+      ..shader = Gradient.linear(
+        const Offset(0, 0),
+        Offset(size.x, size.y),
+        [color, color.brighten(0.5)],
+      );
+
+    add(
+      PolygonComponent(direction == BrickRunDirection.horizontal
+          ? [
+              Vector2.zero(),
+              Vector2(size.x, 0),
+              Vector2(size.x - size.y, size.y),
+              Vector2(0, size.y)
+            ]
+          : [
+              position,
+              Vector2(size.x, position.y),
+              Vector2(size.x, size.y),
+              Vector2(position.x + size.y, size.y)
+            ])
+        ..paint = p,
+    );
   }
 }
